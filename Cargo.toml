@@ -1,0 +1,16 @@
+[package]
+name = "oidc-test"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version="1.28.2", features=["macros", "rt-multi-thread"] }
+anyhow = "1.0.72"
+openidconnect = "3.3.0"
+axum = { version="0.6.18", features=["macros", "multipart", "query"] }
+axum-sessions = "0.5.0"
+leptos = "0.4.6"
+figment = { version = "0.10", features = ["env", "toml"] }
+serde = { version="1.0.164", features=["derive"] }

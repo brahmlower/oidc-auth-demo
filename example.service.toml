@@ -1,0 +1,14 @@
+
+[http]
+host="0.0.0.0"
+port=9090
+
+[http.cookie]
+name="auth_v1"
+domain="example.com"
+key="abcdefghijklmnopabcdefghijklmnopabcdefghijklmnopabcdefghijklmnop"
+
+[oidc.google]
+client_id="google client id"
+client_secret="google client secret"
+redirect="http://example.com:9090/auth/oidc/redirect"
