@@ -1,6 +1,6 @@
 use std::net::{IpAddr, SocketAddr};
 
-use axum_sessions::{async_session::SessionStore, SameSite, SessionLayer};
+use axum_sessions::{async_session::SessionStore, SameSite, SessionLayer, PersistencePolicy};
 use serde::Deserialize;
 
 use crate::oidc::OidcController;
@@ -19,6 +19,7 @@ impl CookieConfig {
         }
 
         SessionLayer::new(store, self.key.as_bytes())
+            .with_persistence_policy(PersistencePolicy::ExistingOnly)
             .with_cookie_domain(self.domain.clone())
             .with_same_site_policy(SameSite::Lax) // todo this should be strict 🤔
             .with_cookie_name(self.name.clone())
