@@ -1,8 +1,10 @@
 use openidconnect::{
-    core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
+    core::{CoreAuthenticationFlow, CoreClient, CoreGenderClaim, CoreProviderMetadata},
     reqwest::async_http_client,
     url::Url,
-    ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce, PkceCodeChallenge, RedirectUrl, Scope,
+    AccessTokenHash, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EmptyAdditionalClaims,
+    IdTokenClaims, IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier,
+    RedirectUrl, Scope, TokenResponse,
 };
 
 use crate::OidcState;
@@ -78,5 +80,57 @@ impl OidcController {
                 nonce,
             },
         ))
+    }
+
+    pub async fn callback<T>(&self, auth_code: &str, auth_state: &str, oidc_state: &OidcState) -> T
+    where
+        T: From<IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim>>,
+    {
+        if auth_state != oidc_state.csrf_token.secret() {
+            panic!(
+                "auth_state ({}) does not match expected csrf_token ({})",
+                auth_state,
+                oidc_state.csrf_token.secret()
+            );
+        }
+
+        // Once the user has been redirected to the redirect URL, you'll have access to the
+        // authorization code. For security reasons, your code should verify that the `state`
+        // parameter returned by the server matches `csrf_state`.
+
+        let owned_verifier = PkceCodeVerifier::new(oidc_state.pkce_verifier.secret().to_owned());
+
+        // Now you can exchange it for an access token and ID token.
+        let token_response = oidc_state
+            .client
+            .exchange_code(AuthorizationCode::new(auth_code.to_string()))
+            // Set the PKCE code verifier.
+            .set_pkce_verifier(owned_verifier)
+            .request_async(async_http_client)
+            .await
+            .expect("response token failed");
+
+        // Extract the ID token claims after verifying its authenticity and nonce.
+        let id_token = token_response
+            .id_token()
+            .expect("Server did not return an ID token");
+        let claims = id_token
+            .claims(&oidc_state.client.id_token_verifier(), &oidc_state.nonce)
+            .expect("claims failed");
+
+        // Verify the access token hash to ensure that the access token hasn't been substituted for
+        // another user's.
+        if let Some(expected_access_token_hash) = claims.access_token_hash() {
+            let actual_access_token_hash = AccessTokenHash::from_token(
+                token_response.access_token(),
+                &id_token.signing_alg().expect("signing alg was not okay"),
+            )
+            .expect("access token from hash failed");
+            if actual_access_token_hash != *expected_access_token_hash {
+                panic!("invalid access token");
+            }
+        }
+
+        T::from(claims.clone())
     }
 }

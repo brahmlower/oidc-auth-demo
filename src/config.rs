@@ -1,6 +1,6 @@
 use std::net::{IpAddr, SocketAddr};
 
-use axum_sessions::{async_session::SessionStore, SameSite, SessionLayer, PersistencePolicy};
+use axum_sessions::{async_session::SessionStore, PersistencePolicy, SameSite, SessionLayer};
 use serde::Deserialize;
 
 use crate::oidc::OidcController;
